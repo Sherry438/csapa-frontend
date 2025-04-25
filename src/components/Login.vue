@@ -11,19 +11,16 @@ const password = ref('')
 
 // Send request to server to get data
 function login() {
-    axios.post("http://localhost:8080/login", {
-        "username": username.value,
-        "password": password.value
-    })
+    axios.post('http://localhost:8080/login', { username: username.value, password: password.value })
         .then(res => {
-            if (res.data === 'user') {
+            localStorage.setItem('role', res.data.role)
+            localStorage.setItem('uid', res.data.id)
+            if (res.data.role === 'buyer') {
                 router.push('/order')
-            } else if (res.data === 'seller') {
+            } else if (res.data.role === 'seller') {
                 router.push('/manage')
-            } else {
-                alert('Login failed: ' + res.data)
             }
-        })
+        }).catch(() => alert('Login Failed'))
 }
 </script>
 
@@ -47,9 +44,8 @@ function login() {
 </template>
 
 <style>
-
 .password-field {
-    margin-top: 15px; 
+    margin-top: 15px;
 }
 
 label {

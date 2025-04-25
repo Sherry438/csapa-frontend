@@ -1,106 +1,79 @@
 <script setup>
-import { ref, computed } from 'vue'
+import axios from 'axios'
+import { ref } from 'vue'
 
-const products = ref([
-  { name: 'Apple Americano', stock: 99, number: 0, price: 16, image: '/image/AppleAmericano.png' },
-  { name: 'Lemon Sparkling water', stock: 5, number: 0, price: 12, image: '/image/LemonSparklingWater.png' },
-  { name: 'Strawberry Matcha Latte', stock: 18, number: 0, price: 13, image: '/image/StrawberryMatchaLatte.png' },
-  { name: 'Peach Blossom Latte', stock: 60, number: 0, price: 16, image: '/image/PeachBlossomLatte.png' },
-  { name: 'Grapefruit Sparkling Americano', stock: 27, number: 0, price: 14, image: '/image/GrapefruitSparklingAmericano.png' }
-])
-const afterSubmit = ref(false)
+const name = ref('product')
+const skuList = ref([])
+const order = ref({})
 
-const totalPayment = computed(() => {
-  return products.value.reduce((sum, product) => {
-    return sum + (product.number * product.price)
-  }, 0)
-})
+function getSku() {
+  order.value = {}
+  axios.get('http://localhost:8080/sku')
+    .then(res => {
+      console.log(res.data)
+      skuList.value = res.data
+      name.value = res.data[0].product
+    })
+}
+getSku()
 
-function add(index) {
-  if (products.value[index].stock > 0) {
-    products.value[index].number++
-    products.value[index].stock--
+function add(sku) {
+  if (sku.stock === 0) {
+    return
   }
+  if (order.value[sku.id] === undefined) {
+    order.value[sku.id] = 0
+  }
+  order.value[sku.id] = (order.value[sku.id] || 0) + 1
+  sku.stock--
 }
 
-function minus(index) {
-  if (products.value[index].number > 0) {
-    products.value[index].number--
-    products.value[index].stock++
+function minus(sku) {
+  if (order.value[sku.id] === 0 || order.value[sku.id] === undefined) {
+    return
   }
+  if (order.value[sku.id] === 1) {
+    delete order.value[sku.id]
+  }
+  order.value[sku.id] = order.value[sku.id] - 1
+  sku.stock++
 }
 
 function submit() {
-  products.value.forEach(product => {
-    product.number = 0
-  })
-  afterSubmit.value = true
+  if (Object.keys(order.value).length === 0) {
+    return alert('No Product Selected!')
+  }
+  axios.post(`http://localhost:8080/order/${localStorage.getItem('uid')}`, order.value)
+    .then(res => {
+      alert(res.data === true ? 'Success!' : 'Failed!')
+      getSku()
+    })
 }
 </script>
 
+
 <template>
   <h1>Order your coffee here ～</h1>
-
   <div class="products-container">
-    <div v-for="(product, index) in products" :key="index" class="product-card">
-      <img class="image" :src="product.image" :alt="product.name">
-      <div class="product-info">
-        <div class="product-name">
-          {{ product.name }}
+
+    <div class="sku" v-for="sku in skuList" :key="sku">
+      <div class="product-card">
+        <img class="image" :src="sku.avatar || '/'">
+        <b class="name">{{ sku.name }}</b>
+        <div class="price">￥{{ sku.price }}</div>
+        <div class="stock">{{ sku.stock }} left</div>
+        <div class="order">
+          <div class="set" @click="minus(sku)">－</div>
+          <span>{{ order[sku.id] || 0 }}</span>
+          <div class="set" @click="add(sku)">＋</div>
         </div>
-        <div class="product-price">￥{{ product.price }}/cup</div>
-      </div>
-      <div class="stockLeft">{{ product.stock }} cups left</div>
-      <div class="order-controls">
-        <button @click="minus(index)" :disabled="product.number === 0">－</button>
-        <span>{{ product.number }}</span>
-        <button @click="add(index)" :disabled="product.stock === 0">＋</button>
       </div>
     </div>
   </div>
-
-  <div class="checkout-section">
-    <div class="sum">
-      <div>Total bill: ￥{{ totalPayment }}</div>
-    </div>
-
-    <button class="submit-btn" @click="submit">Purchase</button>
-    <div class="afterSubmit" v-if="afterSubmit">
-      <button>You have successfully purchased your coffee!</button>
-    </div>
-  </div>
+  <button class="submit" @click="submit">Purchase</button>
 </template>
 
-<style scoped>
-.products-container {
-  margin-bottom: 30px;
-}
-
-.product-card {
-  width: 48%;
-  display: flex;
-  align-items: center;
-  gap: 30px;
-  padding: 15px;
-  margin-bottom: 15px;
-  border: 2px solid rgb(225, 194, 255);
-  border-radius: 12px;
-  background-color: white;
-  position: relative;
-}
-
-.product-card::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border: 2px solid rgb(225, 194, 255);
-  border-radius: 12px;
-  z-index: -1;
-}
-
+<style>
 .image {
   width: 120px;
   height: 120px;
@@ -108,64 +81,18 @@ function submit() {
   border-radius: 8px;
 }
 
-.product-info {
-  flex: 2;
-  font-size: 20px;
-}
-
-.product-name {
+.name {
   font-size: 25px;
   font-weight: bold;
   border-top: 0;
   color: rgb(84, 9, 176);
 }
 
-.product-price {
+.price {
   border-top: 30px;
 }
 
-.order-controls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.stockLeft {
-  display: flex;
-  align-items: last baseline;
-  justify-content: center;
-}
-
-.order-controls button {
-  width: 25px;
-  height: 25px;
-  border: none;
-  border-radius: 10%;
-  background-color: rgb(225, 194, 255);
-  color: #ffffff;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.order-controls button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.checkout-section {
-  margin-bottom: 10%; 
-}
-
-.sum {
-  margin: 10px;
-  font-size: 1.2em;
-  font-weight: bold;
-}
-
-.submit-btn {
+.submit {
   margin-top: 5px;
   margin-left: 3px;
   padding: 8px 16px;
@@ -177,19 +104,38 @@ function submit() {
   width: 180px;
   height: 40px;
   font-size: 20px;
-  margin-bottom: 0; 
+  margin-bottom: 0;
 }
 
-.submit-btn:hover {
+.products-container {
+  margin-bottom: 30px;
+}
+
+.product-card {
+  width: 50%;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 2px solid rgb(225, 194, 255);
+  border-radius: 12px;
+  background-color: white;
+  position: relative;
+}
+
+
+.order {
+  width: 65px;
+  height: 25px;
+  border: none;
+  border-radius: 10%;
   background-color: rgb(225, 194, 255);
-}
-
-.afterSubmit {
-  margin-top: 0; 
-  font-size: 16px;
-}
-
-.afterSubmit button {
-  background-color: rgb(221, 255, 224);
+  color: #ffffff;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
