@@ -6,5 +6,7 @@ export default defineConfig({
   plugins: [vue()],
   assetsInclude: ['**/*.JPG'],
   assetsInclude: ['**/*.JPG', '**/*.jpg'],
+  server: {
+    host: '0.0.0.0'
+  }
 })
-

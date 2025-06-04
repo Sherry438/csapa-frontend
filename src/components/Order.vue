@@ -1,141 +1,225 @@
-<script setup>
-import axios from 'axios'
-import { ref } from 'vue'
-
-const name = ref('product')
-const skuList = ref([])
-const order = ref({})
-
-function getSku() {
-  order.value = {}
-  axios.get('http://localhost:8080/sku')
-    .then(res => {
-      console.log(res.data)
-      skuList.value = res.data
-      name.value = res.data[0].product
-    })
-}
-getSku()
-
-function add(sku) {
-  if (sku.stock === 0) {
-    return
-  }
-  if (order.value[sku.id] === undefined) {
-    order.value[sku.id] = 0
-  }
-  order.value[sku.id] = (order.value[sku.id] || 0) + 1
-  sku.stock--
-}
-
-function minus(sku) {
-  if (order.value[sku.id] === 0 || order.value[sku.id] === undefined) {
-    return
-  }
-  if (order.value[sku.id] === 1) {
-    delete order.value[sku.id]
-  }
-  order.value[sku.id] = order.value[sku.id] - 1
-  sku.stock++
-}
-
-function submit() {
-  if (Object.keys(order.value).length === 0) {
-    return alert('No Product Selected!')
-  }
-  axios.post(`http://localhost:8080/order/${localStorage.getItem('uid')}`, order.value)
-    .then(res => {
-      alert(res.data === true ? 'Success!' : 'Failed!')
-      getSku()
-    })
-}
-</script>
-
-
 <template>
-  <h1>Order your coffee here ～</h1>
-  <div class="products-container">
+  <div class="page-container">
+    <div class="container">
+      <!-- 侧边栏 -->
+      <div class="sidebar">
+        <div class="profile">
+          <div class="avatar"></div>
+          <div class="name">Name</div>
+        </div>
+        <nav class="menu">
+          <div class="menu-item">规则&流程</div>
+          <div class="menu-item active">选择教练&书院</div>
+          <div class="menu-item">我的选择</div>
+          <div class="menu-item">查看结果</div>
+        </nav>
+      </div>
 
-    <div class="sku" v-for="sku in skuList" :key="sku">
-      <div class="product-card">
-        <img class="image" :src="sku.avatar || '/'">
-        <b class="name">{{ sku.name }}</b>
-        <div class="price">￥{{ sku.price }}</div>
-        <div class="stock">{{ sku.stock }} left</div>
-        <div class="order">
-          <div class="set" @click="minus(sku)">－</div>
-          <span>{{ order[sku.id] || 0 }}</span>
-          <div class="set" @click="add(sku)">＋</div>
+      <!-- 主内容区 -->
+      <div class="main-content">
+        <div class="top-bar">教练和书院选择</div>
+
+        <div class="content-area">
+          <h1 class="title">基于教练选择</h1>
+          <p class="intro">介绍：选择您喜欢的教练，系统将自动匹配对应的书院...</p>
+
+         <swiper-container>
+          <swiper-slide>
+            Slide 1
+          </swiper-slide>
+          <swiper-slide>
+            Slide 2
+          </swiper-slide>
+          <swiper-slide>
+            Slide 3
+          </swiper-slide>
+         </swiper-container>
+        
+
+          <button class="next-button" @click="goToNextStep">下一步：对比&投票</button>
         </div>
       </div>
     </div>
   </div>
-  <button class="submit" @click="submit">Purchase</button>
 </template>
 
-<style>
-.image {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 8px;
+<script>
+export default {
+  name: 'SelectCoach',
+  mounted() {
+    this.initCarousel();
+    window.addEventListener('keydown', this.handleKeyDown);
+  },
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleKeyDown);
+  },
+  methods: {
+    initCarousel() {
+      this.cards = document.querySelectorAll('.coach-card');
+      this.currentIndex = 2; // 改为2，使第3张卡片作为默认active
+      this.positionCards();
+    },
+    positionCards() {
+      this.cards.forEach((card, index) => {
+        // 增大这个数值可以让卡片间距变大
+        const offset = (index - this.currentIndex) * 210;
+        card.style.left = `calc(50% + ${offset}px)`;
+        card.style.transform = `translateX(-50%) scale(${index === this.currentIndex ? 1 : 0.8})`;
+        card.style.opacity = index === this.currentIndex ? '1' : '0.5';
+        card.style.zIndex = index === this.currentIndex ? '2' : '1';
+      });
+    },
+    handleKeyDown(e) {
+      if (e.key === 'ArrowLeft' && this.currentIndex > 0) {
+        this.currentIndex--;
+        this.positionCards();
+      } else if (e.key === 'ArrowRight' && this.currentIndex < this.cards.length - 1) {
+        this.currentIndex++;
+        this.positionCards();
+      }
+    },
+    goToNextStep() {
+      alert('即将跳转到对比投票页面');
+      // 这里可以添加页面跳转逻辑
+      // this.$router.push('/compare-vote');
+    }
+  }
+}
+</script>
+
+<style scoped>
+.page-container {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  height: 100vh;
+  background-color: #f5f5f5;
+  color: #333;
 }
 
-.name {
-  font-size: 25px;
-  font-weight: bold;
-  border-top: 0;
-  color: rgb(84, 9, 176);
+.container {
+  display: flex;
+  width: 100%;
 }
 
-.price {
-  border-top: 30px;
+.sidebar {
+  width: 210px;
+  background-color: white;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
 }
 
-.submit {
-  margin-top: 5px;
-  margin-left: 3px;
-  padding: 8px 16px;
-  background-color: rgb(84, 9, 176);
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  width: 180px;
-  height: 40px;
-  font-size: 20px;
-  margin-bottom: 0;
-}
-
-.products-container {
+.profile {
+  display: flex;
+  align-items: center;
   margin-bottom: 30px;
 }
 
-.product-card {
-  width: 50%;
-  display: flex;
-  align-items: center;
-  gap: 25px;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 2px solid rgb(225, 194, 255);
-  border-radius: 12px;
-  background-color: white;
-  position: relative;
+.avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  margin-right: 10px;
 }
 
+.name {
+  color: #999;
+  font-size: 16px;
+}
 
-.order {
-  width: 65px;
-  height: 25px;
-  border: none;
-  border-radius: 10%;
-  background-color: rgb(225, 194, 255);
-  color: #ffffff;
-  font-weight: bold;
+.menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-item {
+  padding: 12px 0;
+  color: #999;
   cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.menu-item.active {
+  color: #1a73e8;
+  font-weight: bold;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-bar {
+  padding: 15px 20px;
+  background-color: white;
+  text-align: right;
+  color: #999;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.content-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.title {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.intro {
+  color: #999;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+.coach-carousel {
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 400px;
+  position: relative;
+  margin-bottom: 40px;
+  width: 100%;
+  overflow: hidden;
+  min-width: 1200px;
+}
+
+.coach-card {
+  width: 250px;
+  height: 350px;
+  background-color: #1a73e8;
+  border-radius: 10px;
+  position: absolute;
+  transition: all 0.3s ease;
+  opacity: 0.5;
+  transform: scale(0.8);
+}
+
+.coach-card.active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 2;
+}
+
+
+.next-button {
+  float: right;
+  padding: 12px 24px;
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 20px;
+}
+
+.next-button:hover {
+  background-color: #0d5bba;
 }
 </style>
