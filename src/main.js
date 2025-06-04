@@ -12,6 +12,7 @@ const router = createRouter({
     routes: [
         { path: '/login', component: () => import('./components/Login.vue') },
         { path: '/order', component: () => import('./components/order.vue') },
+        { path: '/selection', component: ()=> import('./components/TwoPath.vue') }
 
     ]
 })
